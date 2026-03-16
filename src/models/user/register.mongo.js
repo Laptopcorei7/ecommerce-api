@@ -18,15 +18,28 @@ const registerSchema = mongoose.Schema({
     type: String,
     required: true,
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  verificationToken: {
+    type: String,
+  },
+  verificationTokenExpires: {
+    type: Date,
+  },
 });
 
-registerSchema.pre("save", function (next) {
-  if (!this.isModified("password")) return next();
-  bcrypt.hash(this.password, saltRounds, (err, hash) => {
-    if (err) return next(err);
+registerSchema.pre("save", async function () {
+  if (!this.isModified("password")) {
+    return;
+  }
+  try {
+    const hash = await bcrypt.hash(this.password, saltRounds);
     this.password = hash;
-    next();
-  });
+  } catch (err) {
+    throw err;
+  }
 });
 
 module.exports = mongoose.model("Register", registerSchema);
