@@ -1,5 +1,3 @@
-const mongoose = require("mongoose");
-
 const registers = require("./register.mongo");
 
 async function findAllUsers() {
@@ -25,7 +23,7 @@ async function saveRegisteredUsers(register) {
     return newUser;
   } catch (err) {
     if (err === 11000) {
-      throw new Error("Email already exists");
+      throw new Error("Email already exists", { cause: err });
     }
     throw err;
   }

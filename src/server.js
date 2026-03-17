@@ -1,7 +1,8 @@
-// server.js
 require("dotenv").config();
 const http = require("http");
 const mongoose = require("mongoose");
+const cron = require("node-cron");
+const { deleteUnverifiedAccounts } = require("./services/cleanup.service");
 const app = require("./app");
 
 const PORT = process.env.PORT || 8000;
@@ -15,6 +16,13 @@ async function startServer() {
     server.listen(PORT, () => {
       console.log(`✓ Server listening on port ${PORT}`);
     });
+
+    cron.schedule("0 * * * *", () => {
+      console.log("🕐 Running cleanup job...");
+      deleteUnverifiedAccounts();
+    });
+
+    console.log("✓ Cleanup job scheduled (runs every hour)");
   } catch (error) {
     console.error("Failed to connect to MongoDB:", error);
     process.exit(1);
