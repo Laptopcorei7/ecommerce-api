@@ -87,18 +87,6 @@ async function httpLogin(req, res) {
 async function httpLogout(req, res) {
   const sessionId = req.cookies.sessionId;
 
-  if (!sessionId) {
-    return res.status(401).json({
-      error: "You are not logged in",
-    });
-  }
-
-  if (!sessions[sessionId]) {
-    return res.status(401).json({
-      error: "Session Invalid or expired",
-    });
-  }
-
   delete sessions[sessionId];
 
   res.clearCookie("sessionId");
@@ -108,8 +96,18 @@ async function httpLogout(req, res) {
   });
 }
 
+async function httpGetMe(req, res) {
+  return res.status(200).json({
+    user: {
+      name: req.user.name,
+      email: req.user.email,
+    },
+  });
+}
+
 module.exports = {
   httpLogin: httpLogin,
   sessions: sessions,
   httpLogout: httpLogout,
+  httpGetMe: httpGetMe,
 };
