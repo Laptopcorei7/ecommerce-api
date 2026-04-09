@@ -84,7 +84,7 @@ async function httpCreateOrder(req, res) {
     const shipping = 10.0;
     const total = subtotal + tax + shipping;
 
-    const orderNumber = generateOrderNumber;
+    const orderNumber = generateOrderNumber();
 
     const order = await Order.create(
       [
@@ -150,10 +150,10 @@ async function httpGetUserOrders(req, res) {
       orderNumber: order.orderNumber,
       total: order.total,
       status: order.status,
-      itemCount: order.items.length,
+      itemCount: order.items?.length || 0,
       orderDate: order.orderDate,
       deliveryDate: order.deliveryDate,
-      shippingAddress: order.shippingAddress,
+      shippingAddress: order.shippingAddress || {},
     }));
 
     return res.status(200).json({

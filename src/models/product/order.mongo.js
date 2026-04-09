@@ -123,6 +123,5 @@ const orderSchema = new mongoose.Schema(
 );
 
 orderSchema.index({ userId: 1, createdAt: -1 });
-orderSchema.index({ orderNumber: 1 });
 
 module.exports = mongoose.model("Order", orderSchema);

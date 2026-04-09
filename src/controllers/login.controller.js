@@ -1,9 +1,37 @@
+require("dotenv").config();
 const validator = require("validator");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+
 const register = require("../models/user/register.mongo");
 
-const sessions = {};
+const SESSION_FILE = process.env.SESSION_FILE;
+let sessions = {};
+
+try {
+  if (fs.existsSync(SESSION_FILE)) {
+    const data = fs.readFileSync(SESSION_FILE, "utf-8");
+    sessions = JSON.parse(data);
+    console.log("✓ Loaded", Object.keys(sessions).length, "sessions from file");
+  }
+} catch (err) {
+  console.error("Error loading sessions:", err);
+  sessions = {};
+}
+
+function saveSessions() {
+  try {
+    const dir = path.dirname(SESSION_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(SESSION_FILE, JSON.stringify(sessions, null, 2));
+  } catch (err) {
+    console.error("Error saving sessions:", err);
+  }
+}
 
 function generateSessionId() {
   return crypto.randomBytes(32).toString("hex");
@@ -62,6 +90,8 @@ async function httpLogin(req, res) {
       createdAt: Date.now(),
     };
 
+    saveSessions();
+
     res.cookie("sessionId", sessionId, {
       httpOnly: true,
       secure: false,
@@ -88,6 +118,8 @@ async function httpLogout(req, res) {
   const sessionId = req.cookies.sessionId;
 
   delete sessions[sessionId];
+
+  saveSessions();
 
   res.clearCookie("sessionId");
 

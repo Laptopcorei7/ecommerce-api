@@ -8,7 +8,7 @@ const {
   httpGetOrder,
   httpGetAllOrders,
   httpUpdateOrderStatus,
-} = require("../../controllers/cart.controller");
+} = require("../../controllers/order.controller");
 
 const orderRouter = express.Router();
 
