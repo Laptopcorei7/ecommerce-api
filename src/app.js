@@ -8,6 +8,7 @@ const { loginRouter } = require("./routes/user/login.routes");
 const { protectedRouter } = require("./routes/user/protected.router");
 const { productRouter } = require("./routes/products/product.routes");
 const { cartRouter } = require("./routes/products/cart.routes");
+const { orderRouter } = require("./routes/products/order.routes");
 
 const app = express();
 
@@ -25,5 +26,6 @@ app.use(loginRouter);
 app.use(protectedRouter);
 app.use(productRouter);
 app.use(cartRouter);
+app.use(orderRouter);
 
 module.exports = app;
