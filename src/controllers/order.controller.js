@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const Order = require("../models/product/order.mongo");
 const Cart = require("../models/product/cart.mongo");
-// const Product = require("../models/product/product.mongo");
+const Product = require("../models/product/product.mongo");
 
 function generateOrderNumber() {
   const date = new Date();
@@ -139,11 +139,34 @@ async function httpCreateOrder(req, res) {
 
 async function httpGetUserOrders(req, res) {
   const userId = req.user.id;
+  const { status } = req.query;
 
   try {
-    const orders = await Order.find({ userId: userId })
+    const query = { userId: userId };
+
+    if (status) {
+      const validStatuses = [
+        "pending",
+        "paid",
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+      ];
+
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          error: "Invalid status",
+          validStatuses: validStatuses,
+        });
+      }
+
+      query.status = status;
+    }
+
+    const orders = await Order.find(query)
       .sort({ createdAt: -1 })
-      .select("__v");
+      .select("-__v");
 
     const formattedOrders = orders.map((order) => ({
       id: order._id,
@@ -182,7 +205,7 @@ async function httpGetOrder(req, res) {
   try {
     const order = await Order.findById(id)
       .populate("items.productId", "name category images")
-      .select("__v");
+      .select("-__v");
 
     if (!order) {
       return res.status(404).json({
@@ -190,7 +213,7 @@ async function httpGetOrder(req, res) {
       });
     }
 
-    if (isAdmin && order.userId.toString() !== userId.toString()) {
+    if (!isAdmin && order.userId.toString() !== userId.toString()) {
       return res.status(403).json({
         error: "Not your order",
       });
@@ -215,8 +238,32 @@ async function httpGetOrder(req, res) {
 }
 
 async function httpGetAllOrders(req, res) {
+  const { status } = req.query;
+
   try {
-    const orders = await Order.find({})
+    const query = {};
+
+    if (status) {
+      const validStatuses = [
+        "pending",
+        "paid",
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+      ];
+
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          error: "Invalid status",
+          validStatuses: validStatuses,
+        });
+      }
+
+      query.status = status;
+    }
+
+    const orders = await Order.find(query)
       .populate("userId", "name email")
       .sort({ createdAt: -1 })
       .select("__v");
@@ -282,10 +329,17 @@ async function httpUpdateOrderStatus(req, res) {
       });
     }
 
+    const previousStatus = order.status;
     order.status = status;
 
-    if (status === "delivered" && !order.deliveryDate) {
-      order.deliveryDate = new Date();
+    if (status === "cancelled" && previousStatus !== "cancelled") {
+      for (const item of order.items) {
+        const product = await Product.findById(item.productId);
+        if (product) {
+          product.stock += item.quantity;
+          await product.save();
+        }
+      }
     }
 
     await order.save();

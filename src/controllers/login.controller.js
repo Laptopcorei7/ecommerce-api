@@ -1,4 +1,3 @@
-require("dotenv").config();
 const validator = require("validator");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
@@ -7,7 +6,7 @@ const path = require("path");
 
 const register = require("../models/user/register.mongo");
 
-const SESSION_FILE = process.env.SESSION_FILE;
+const SESSION_FILE = path.join(__dirname, "../../data/sessions.json");
 let sessions = {};
 
 try {
