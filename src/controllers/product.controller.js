@@ -50,16 +50,137 @@ async function httpCreateProduct(req, res) {
 
 async function httpGetAllProducts(req, res) {
   try {
-    const products = await Product.find({})
+    const {
+      search,
+      category,
+      minPrice,
+      maxPrice,
+      sort,
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const query = {};
+
+    if (search) {
+      query.name = { $regex: search, $options: "i" };
+    }
+
+    if (category) {
+      const validCategories = [
+        "Electronics",
+        "Clothing",
+        "Books",
+        "Home",
+        "Sports",
+        "Other",
+      ];
+      if (!validCategories.includes(category)) {
+        return res.status(400).json({
+          error: "Invalid category",
+          validCategories: validCategories,
+        });
+      }
+      query.category = category;
+    }
+
+    if (minPrice || maxPrice) {
+      query.price = {};
+
+      if (minPrice) {
+        const min = parseFloat(minPrice);
+        if (isNaN(min) || min < 0) {
+          return res.status(400).json({
+            error: "Invalid minPrice",
+          });
+        }
+        query.price.$gte = min;
+      }
+
+      if (maxPrice) {
+        const max = parseFloat(maxPrice);
+        if (isNaN(max) || max < 0) {
+          return res.status(400).json({
+            error: "Invalid maxPrice",
+          });
+        }
+        query.price.$lte = max;
+      }
+    }
+
+    if (minPrice && maxPrice && parseFloat(minPrice) > parseFloat(maxPrice)) {
+      return res.status(400).json({
+        error: "minPrice cannot be greater than maxPrice",
+      });
+    }
+
+    let sortOption = {};
+
+    if (sort) {
+      const validSorts = [
+        "price",
+        "-price",
+        "-name",
+        "createdAt",
+        "-createdAt",
+      ];
+
+      if (!validSorts.includes(sort)) {
+        return res.status(400).json({
+          error: "Invalid sort parameters",
+          validSorts: validSorts,
+        });
+      }
+
+      if (sort.startsWith("-")) {
+        const field = sort.substring(1);
+        sortOption[field] = -1;
+      } else {
+        sortOption[sort] = 1;
+      }
+    } else {
+      sortOption.createdAt = -1;
+    }
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({
+        error: "Invalid page number",
+      });
+    }
+
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+      return res.status(400).json({
+        error: "Invalid limit(must be 1-100)",
+      });
+    }
+
+    const skip = (pageNum - 1) * limitNum;
+
+    const products = await Product.find(query)
       .select("-createdBy -__v")
-      .sort({ createdAt: -1 });
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limitNum);
+
+    const totalProducts = await Product.countDocuments(query);
+    const totalPages = Math.ceil(totalProducts / limitNum);
 
     return res.status(200).json({
-      count: products.length,
-      products,
+      products: products,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: totalPages,
+        totalProducts: totalProducts,
+        productsPerPage: limitNum,
+        hasNextPage: pageNum < totalPages,
+        hasPreviousPage: pageNum > 1,
+      },
     });
   } catch (err) {
-    console.error("Get products error:", err);
+    console.error("Get product error:", err);
     return res.status(500).json({
       error: "Failed to get products",
     });
