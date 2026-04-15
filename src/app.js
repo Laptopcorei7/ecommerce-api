@@ -9,6 +9,7 @@ const { protectedRouter } = require("./routes/user/protected.router");
 const { productRouter } = require("./routes/products/product.routes");
 const { cartRouter } = require("./routes/products/cart.routes");
 const { orderRouter } = require("./routes/products/order.routes");
+const { profileRouter } = require("./routes/user/profile.routes");
 
 const app = express();
 
@@ -27,5 +28,6 @@ app.use(protectedRouter);
 app.use(productRouter);
 app.use(cartRouter);
 app.use(orderRouter);
+app.use(profileRouter);
 
 module.exports = app;

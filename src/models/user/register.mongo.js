@@ -34,6 +34,12 @@ const registerSchema = mongoose.Schema(
     verificationTokenExpires: {
       type: Date,
     },
+    resetPasswordToken: {
+      type: String,
+    },
+    resetPasswordTokenExpires: {
+      type: Date,
+    },
   },
   {
     timestamps: true,
@@ -44,7 +50,7 @@ registerSchema.pre("save", async function () {
   if (!this.isModified("password")) {
     return;
   }
-  const hash = await bcrypt.hash(this.password, saltRounds);
+  const hash = bcrypt.hash(this.password, saltRounds);
   this.password = hash;
 });
 
