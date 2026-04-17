@@ -1,6 +1,11 @@
 const bcrypt = require("bcrypt");
 const validator = require("validator");
+
 const Register = require("../models/user/register.mongo");
+const {
+  deleteOtherUserSessions,
+  updateUserSessions,
+} = require("../controllers/login.controller");
 
 async function httpGetProfile(req, res) {
   const userId = req.user.id;
@@ -48,6 +53,8 @@ async function httpUpdateProfile(req, res) {
       });
     }
 
+    const sessionUpdates = {};
+
     if (name) {
       if (typeof name != "string" || name.trim().length === 0) {
         return res.status(400).json({
@@ -55,6 +62,7 @@ async function httpUpdateProfile(req, res) {
         });
       }
       user.name = name.trim();
+      sessionUpdates.name = name.trim();
     }
 
     if (email) {
@@ -74,6 +82,7 @@ async function httpUpdateProfile(req, res) {
         }
         user.email = email;
         user.isVerified = true;
+        sessionUpdates.email = email;
 
         // TODO: Send new verification email
         // For now, we'll just require them to verify again
@@ -81,6 +90,11 @@ async function httpUpdateProfile(req, res) {
     }
 
     await user.save();
+
+    if (Object.keys(sessionUpdates).length > 0) {
+      const updatedCount = updateUserSessions(userId, sessionUpdates);
+      console.log(`Update ${updatedCount} sessions with new profile data`);
+    }
 
     return res.status(200).json({
       message: "Profile updated successfully",
@@ -102,6 +116,7 @@ async function httpUpdateProfile(req, res) {
 
 async function httpChangePassword(req, res) {
   const userId = req.user.id;
+  const currentSessionId = req.cookies.sessionId;
   const { currentPassword, newPassword } = req.body;
 
   if (!currentPassword || !newPassword) {
@@ -142,13 +157,13 @@ async function httpChangePassword(req, res) {
       });
     }
 
-    if (!/a-z/.test(newPassword)) {
+    if (!/[a-z]/.test(newPassword)) {
       return res.status(400).json({
         error: "Password must contain at least one lowercase letter",
       });
     }
 
-    if (!/0-9/.test(newPassword)) {
+    if (!/[0-9]/.test(newPassword)) {
       return res.status(400).json({
         error: "Password must contain at least one number",
       });
@@ -169,6 +184,12 @@ async function httpChangePassword(req, res) {
 
     user.password = hashedPassword;
     await user.save();
+
+    const deletedCount = deleteOtherUserSessions(userId, currentSessionId);
+
+    console.log(
+      `Password changed. Invalidated ${deletedCount} other sessions. Current session preserved`,
+    );
 
     return res.status(200).json({
       message: "Password changed successfully",

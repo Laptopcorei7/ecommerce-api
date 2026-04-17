@@ -1,5 +1,5 @@
 const register = require("../models/user/register.mongo");
-const { sessions } = require("../controllers/login.controller");
+const { getSession } = require("../controllers/login.controller");
 
 async function requireAuth(req, res, next) {
   const sessionId = req.cookies.sessionId;
@@ -10,9 +10,9 @@ async function requireAuth(req, res, next) {
     });
   }
 
-  const session = sessions[sessionId];
+  const session = getSession(sessionId);
 
-  if (!sessions) {
+  if (!getSession) {
     return res.status(401).json({
       error: "Session invalid or expired",
     });
@@ -23,7 +23,7 @@ async function requireAuth(req, res, next) {
     const user = await register.findById(userId);
 
     if (!user) {
-      delete sessions[sessionId];
+      delete getSession[sessionId];
       return res.status(401).json({
         error: "User not found",
       });

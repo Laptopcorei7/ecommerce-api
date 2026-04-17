@@ -36,6 +36,10 @@ function generateSessionId() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+function getSession(sessionId) {
+  return sessions[sessionId];
+}
+
 async function httpLogin(req, res) {
   const { email, password } = req.body;
 
@@ -85,6 +89,7 @@ async function httpLogin(req, res) {
     const sessionId = generateSessionId();
     sessions[sessionId] = {
       userId: user._id,
+      name: user.name,
       email: user.email,
       createdAt: Date.now(),
     };
@@ -123,7 +128,7 @@ async function httpLogout(req, res) {
   res.clearCookie("sessionId");
 
   return res.status(200).json({
-    error: "Logout successful",
+    message: "Logout successful",
   });
 }
 
@@ -136,9 +141,70 @@ async function httpGetMe(req, res) {
   });
 }
 
+function getUserSessions(userId) {
+  const userSessions = [];
+
+  for (const [sessionId, sessionData] of Object.entries(sessions)) {
+    if (sessionData.userId.toString() === userId.toString()) {
+      userSessions.push({ sessionId, ...sessionData });
+    }
+  }
+
+  return userSessions;
+}
+
+function deleteAllUserSessions(userId) {
+  let deletedCount = 0;
+
+  for (const [sessionId, sessionData] of Object.entries(sessions)) {
+    if (sessionData.userId.toString() === userId.toString()) {
+      delete sessions[sessionId];
+      deletedCount++;
+    }
+  }
+
+  saveSessions();
+  return deletedCount;
+}
+
+function deleteOtherUserSessions(userId, currentSessionId) {
+  let deletedCount = 0;
+
+  for (const [sessionId, sessionData] of Object.entries(sessions)) {
+    if (
+      sessionData.userId.toString() === userId.toString() &&
+      sessionId !== currentSessionId
+    ) {
+      delete sessions[sessionId];
+      deletedCount++;
+    }
+  }
+
+  saveSessions();
+  return deletedCount;
+}
+
+function updateUserSessions(userId, updates) {
+  let updatedCount = 0;
+
+  for (const [sessionData] of Object.entries(sessions)) {
+    if (sessionData.userId.toString() === userId.toString()) {
+      Object.assign(sessionData, updates);
+      updatedCount++;
+    }
+  }
+
+  saveSessions();
+  return updatedCount;
+}
+
 module.exports = {
+  getSession: getSession,
   httpLogin: httpLogin,
-  sessions: sessions,
   httpLogout: httpLogout,
   httpGetMe: httpGetMe,
+  getUserSessions: getUserSessions,
+  deleteAllUserSessions: deleteAllUserSessions,
+  deleteOtherUserSessions: deleteOtherUserSessions,
+  updateUserSessions: updateUserSessions,
 };
